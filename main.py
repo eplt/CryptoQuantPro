@@ -4,6 +4,7 @@ from evaluation.portfolio_builder import PortfolioBuilder
 from backtesting.backtest_engine import BacktestEngine
 from analysis.performance_metrics import PerformanceAnalyzer
 from config.settings import *
+from __version__ import __version__, __release__
 import json
 import pandas as pd
 import numpy as np
@@ -298,6 +299,7 @@ def main():
     start_time = time.time()
     
     print("=== CryptoQuant Pro - Advanced Portfolio Analysis ===")
+    print(f"Version {__version__} - {__release__}")
     print(f"Using {os.cpu_count()} CPU cores for parallel processing")
     print(f"Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     

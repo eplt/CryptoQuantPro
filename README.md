@@ -2,9 +2,12 @@
 
 **Advanced Cryptocurrency Portfolio Optimization with AI-Enhanced Analytics**
 
+**Version 0.1.0 - Initial Public Release**
+
 ---
 
 ![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-Optimized-orange.svg)
@@ -165,6 +168,12 @@ Leverages [Ollama](https://ollama.ai) for local AI-powered report generation usi
 ## Contributing
 
 Contributions are welcome! Please fork the repo, make improvements, and submit Pull Requests.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and releases.
 
 ---
 
