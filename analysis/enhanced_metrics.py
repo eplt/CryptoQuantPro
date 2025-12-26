@@ -20,9 +20,10 @@ class EnhancedMetrics:
             float: Sharpe ratio
         """
         excess_returns = returns - (risk_free_rate / 252)  # Daily risk-free rate
-        if np.std(excess_returns) == 0:
+        std_excess = np.std(excess_returns)
+        if std_excess == 0 or len(returns) == 0:
             return 0.0
-        return np.sqrt(252) * np.mean(excess_returns) / np.std(excess_returns)
+        return np.sqrt(252) * np.mean(excess_returns) / std_excess
     
     @staticmethod
     def calculate_sortino_ratio(returns, risk_free_rate=0.02, target_return=0):
@@ -57,7 +58,7 @@ class EnhancedMetrics:
             float: Calmar ratio
         """
         annual_return = np.mean(returns) * 252
-        if max_drawdown == 0:
+        if max_drawdown == 0 or max_drawdown >= 0:
             return 0.0
         return annual_return / abs(max_drawdown)
     
