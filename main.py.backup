@@ -21,8 +21,8 @@ import time
 from datetime import datetime, timedelta
 
 
-def main():
-    """Main analysis orchestration function."""
+def display_token_results(token_scores, selection_mode, manual_tokens):
+    """Display token analysis results."""
     start_time = time.time()
     
     print("=== CryptoQuant Pro - Advanced Portfolio Analysis ===")
