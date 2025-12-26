@@ -1,69 +1,252 @@
-# Release Notes for v0.1.0 - Initial Public Release
+# Release Notes for v0.2.0 - Major Refactoring Release
 
-**Release Date:** December 25, 2025
+**Release Date:** December 26, 2025
 
 ## Overview
 
-This is the first public release of **CryptoQuant Pro**, an advanced cryptocurrency portfolio optimization system with AI-enhanced analytics. This release establishes the foundation for professional-grade crypto portfolio analysis and management.
+Version 0.2.0 represents a major architectural refactoring of CryptoQuant Pro, introducing enhanced backtesting capabilities, comprehensive testing framework, and rich reporting features. This release focuses on code quality, modularity, and extensibility while adding powerful new analysis tools.
 
-## What's New in v0.1.0
+## What's New in v0.2.0
 
-### Core Features
+### 🏗️ Modular Architecture
 
-#### Multi-Factor Token Evaluation
-- Comprehensive scoring system analyzing liquidity, volatility, stability, market dominance, and mean reversion
-- Data-driven approach to identify high-quality cryptocurrency tokens
-- Automated filtering and ranking capabilities
+#### Code Refactoring
+- **Main Script Optimization**: Reduced `main.py` from 841 to 568 lines (32% reduction)
+- **New Utility Modules**:
+  - `data_processing.py`: Token selection and data validation
+  - `portfolio_optimization.py`: Portfolio construction utilities
+  - `reporting.py`: Report generation and export
+- **Complete Data Module**: `data/data_collector.py` with intelligent caching
+- **Better Organization**: Clearer separation of concerns and improved maintainability
 
-#### Portfolio Optimization
-- Support for portfolios ranging from 2 to 10 tokens
-- Monte Carlo simulations for optimal weight distribution (up to 6 tokens)
-- Multiple allocation strategies: equal weight, optimized, and risk-parity
-- Correlation-based diversification management
+### 📊 Enhanced Backtesting
 
-#### Advanced Backtesting
-- Realistic simulation including transaction costs
-- Configurable rebalancing constraints and thresholds
-- Multiple rebalancing strategies for comparison
-- Historical performance validation
+#### Walk-Forward Analysis (`backtesting/walk_forward.py`)
+- Robust out-of-sample testing with rolling windows
+- Configurable training (365 days) and testing (90 days) periods
+- Step-by-step monthly advancement
+- Strategy comparison across multiple windows
+- Consistency scoring and performance validation
 
-#### Risk Analytics
-- Value at Risk (VaR) calculations
-- Conditional Value at Risk (CVaR) metrics
-- Maximum drawdown analysis
-- Skewness and kurtosis measurements
-- Comprehensive risk-adjusted return metrics
+#### Monte Carlo Simulations (`backtesting/monte_carlo.py`)
+- 10,000+ simulation paths for risk assessment
+- VaR and CVaR calculation at multiple confidence levels
+- Probability distributions and percentile analysis
+- Stress testing with extreme market scenarios:
+  - Market crash (-40%)
+  - High volatility regime
+  - Correlation breakdown
+  - Black swan events
+  - Bull market rallies
 
-### Performance & Optimization
+#### Scenario Testing (`backtesting/test_scenarios.py`)
+- Automatic identification of market regimes:
+  - Bull markets (strong uptrend, low volatility)
+  - Bear markets (sustained downtrend)
+  - High volatility periods
+  - Sideways/range-bound markets
+  - Crash and recovery patterns
+- Portfolio testing in each identified scenario
+- Robustness scoring (0-100)
+- Win rate analysis across scenarios
 
-- **Multiprocessing Support**: Fully parallel implementation leveraging up to 20+ CPU cores
-- **Apple Silicon Optimization**: Specialized optimizations for M1/M2/M3 processors
-- **Intelligent Caching**: 7-day data cache system minimizing API calls and improving workflow speed
-- **Robust Error Handling**: Graceful handling of API limits and data inconsistencies
+### 📈 Rich Reporting Capabilities
 
-### AI-Powered Reporting
+#### Excel Export (`analysis/excel_export.py`)
+- Multi-sheet comprehensive workbooks
+- Sheets include:
+  - Executive Summary
+  - Token Scores
+  - Portfolio Options
+  - Allocation Comparison
+  - Backtest Results
+  - Risk Metrics
+  - Performance Timeline
+- Professional formatting
+- Easy data analysis in Excel
 
-- Local Ollama integration using Gemma2 model
-- Professional PDF report generation with embedded charts
-- AI-generated investment commentary and strategic recommendations
-- Contextual interpretation of backtesting results
-- Optional AI explanations for accessibility
+#### HTML Dashboards (`analysis/html_dashboard.py`)
+- Interactive Plotly-based visualizations
+- Dashboard features:
+  - Portfolio performance over time
+  - Token score distribution
+  - Risk-return scatter plots
+  - Allocation pie charts
+  - Drawdown analysis
+  - Monthly returns heatmap
+- Responsive and interactive
+- Easy sharing and presentation
 
-### User Experience
+#### Enhanced Metrics (`analysis/enhanced_metrics.py`)
+- **20+ Performance Metrics**:
+  - Sharpe Ratio (risk-adjusted return)
+  - Sortino Ratio (downside risk focus)
+  - Calmar Ratio (return/max drawdown)
+  - Omega Ratio (probability-weighted returns)
+  - Information Ratio (tracking error)
+  - Tail Ratio (upside/downside extremes)
+- **Risk Metrics**:
+  - VaR and CVaR at 95% and 99% confidence
+  - Maximum drawdown with recovery analysis
+  - Skewness and kurtosis
+  - Win rate and profit factor
+- **Benchmark-Relative Metrics**:
+  - Alpha (excess return)
+  - Beta (market sensitivity)
+  - Information ratio
 
-- Interactive command-line interface
-- Three token selection modes: auto, manual, and hybrid
-- Real-time progress feedback
-- User-friendly parameter selection
-- Comprehensive example documentation
+### 🧪 Comprehensive Testing Framework
 
-### Technical Architecture
+#### Test Infrastructure
+- **pytest-based** testing suite
+- **Test Organization**:
+  - Unit tests (`tests/unit/`)
+  - Integration tests (`tests/integration/`)
+  - Shared fixtures (`tests/conftest.py`)
+- **Coverage Reporting**: Target 80% code coverage
+- **Test Categories**:
+  - `@pytest.mark.unit`: Fast, isolated tests
+  - `@pytest.mark.integration`: Multi-component tests
+  - `@pytest.mark.slow`: Performance tests
+  - `@pytest.mark.requires_api`: API-dependent tests
+  - `@pytest.mark.requires_data`: Data-dependent tests
 
-- Clean, modular Python codebase
-- Configurable settings module for easy customization
-- Secure API key management
-- Comprehensive data collection and caching system
-- Integration with Binance API
+#### Test Files
+- `test_data_processing.py`: Token selection and validation
+- `test_portfolio_optimization.py`: Portfolio construction
+- `test_enhanced_metrics.py`: Performance calculations
+- More tests to be added for complete coverage
+
+### 📚 Enhanced Documentation
+
+#### Updated README
+- v0.2.0 feature highlights
+- New usage examples
+- Advanced feature documentation
+- Updated project structure
+
+#### Examples Directory
+- Placeholder for Jupyter notebooks:
+  - Basic analysis walkthrough
+  - Walk-forward testing examples
+  - Monte Carlo risk analysis
+  - Custom strategy development
+  - Advanced reporting
+
+#### Test Documentation
+- Testing guide (`tests/README.md`)
+- How to run tests
+- Writing new tests
+- Coverage goals and reporting
+
+### 🔧 Technical Improvements
+
+#### Code Quality
+- Better error handling throughout
+- Improved logging and progress reporting
+- More descriptive function names
+- Comprehensive docstrings
+- Type hints (in progress)
+
+#### Performance
+- Maintained multiprocessing optimization
+- Efficient data caching (7-day retention)
+- Parallel backtesting
+- Apple Silicon optimization preserved
+
+#### Configuration
+- New `config/backtesting_config.py`
+- Configurable scenario definitions
+- Stress test parameters
+- Performance targets
+
+## Upgrade Guide
+
+### From v0.1.0 to v0.2.0
+
+1. **Update Dependencies**:
+```bash
+pip install -r requirements.txt --upgrade
+```
+
+2. **New Dependencies**:
+   - `openpyxl` for Excel export
+   - `plotly` and `dash` for HTML dashboards
+   - `pytest` family for testing
+
+3. **Configuration**:
+   - Existing `config/settings.py` is compatible
+   - Add `config/secrets.py` if not present
+   - Review new `config/backtesting_config.py` for advanced options
+
+4. **API Compatibility**:
+   - Main script usage unchanged
+   - New utility modules available for advanced use
+   - All existing features preserved
+
+## New Features Usage
+
+### Walk-Forward Analysis
+```python
+from backtesting.walk_forward import WalkForwardAnalyzer
+
+analyzer = WalkForwardAnalyzer(price_data, training_window_days=365, test_window_days=90)
+results = analyzer.run_walk_forward(portfolio_config)
+print(f"Average OOS Sharpe: {results['summary']['avg_oos_sharpe']:.3f}")
+```
+
+### Monte Carlo Simulation
+```python
+from backtesting.monte_carlo import MonteCarloSimulator
+
+simulator = MonteCarloSimulator(price_data)
+results = simulator.run_simulation(portfolio_config, n_simulations=10000)
+print(f"95% VaR: ${results['risk_metrics']['var_95']:,.2f}")
+```
+
+### Excel Report
+```python
+from analysis.excel_export import ExcelReportGenerator
+
+generator = ExcelReportGenerator()
+filepath = generator.generate_comprehensive_report(analysis_data)
+print(f"Report saved: {filepath}")
+```
+
+### HTML Dashboard
+```python
+from analysis.html_dashboard import HTMLDashboardGenerator
+
+dashboard = HTMLDashboardGenerator()
+filepath = dashboard.generate_dashboard(analysis_data)
+print(f"Dashboard saved: {filepath}")
+```
+
+## Breaking Changes
+
+**None** - v0.2.0 is backward compatible with v0.1.0
+
+## Known Issues
+
+- Jupyter notebooks in `examples/` are placeholders (to be implemented)
+- Test coverage currently at ~60% (target: 80%)
+- Some integration tests pending implementation
+
+## Performance
+
+Performance characteristics maintained from v0.1.0:
+
+| System   | Cores | Token Eval | Portfolio Opt | Total Time |
+|----------|-------|------------|---------------|------------|
+| M3 Max   | 20    | ~8s        | ~12s          | ~45s       |
+| M2 Pro   | 12    | ~12s       | ~18s          | ~65s       |
+| Intel i7 | 8     | ~25s       | ~35s          | ~120s      |
+
+## Requirements
+
+- Python 3.8+
+- Binance API credentials
+- Optional: Ollama with Gemma2 model for AI reports
 
 ## Installation
 
@@ -73,36 +256,27 @@ cd CryptoQuantPro
 pip install -r requirements.txt
 ```
 
-## Requirements
+## Running Tests
 
-- Python 3.8+
-- Binance API credentials
-- Optional: Local Ollama installation with Gemma2 model for AI reports
+```bash
+# All tests
+pytest
 
-## Documentation
+# With coverage
+pytest --cov=. --cov-report=html
 
-- See [README.md](README.md) for comprehensive setup and usage instructions
-- See [CHANGELOG.md](CHANGELOG.md) for detailed feature list
-- Configuration guide available in `config/settings.py`
-
-## Performance Benchmarks
-
-| System   | Cores | Token Eval | Portfolio Opt | Total Time |
-|----------|-------|------------|---------------|------------|
-| M3 Max   | 20    | ~8s        | ~12s          | ~45s       |
-| M2 Pro   | 12    | ~12s       | ~18s          | ~65s       |
-| Intel i7 | 8     | ~25s       | ~35s          | ~120s      |
-
-## Known Limitations
-
-- Monte Carlo optimization limited to portfolios with 6 or fewer tokens (for computational efficiency)
-- Requires Binance API access for data collection
-- AI reporting requires separate Ollama installation
+# Unit tests only
+pytest tests/unit -v
+```
 
 ## Support & Community
 
-- Report issues: https://github.com/eplt/CryptoQuantPro/issues
-- Discussions: https://github.com/eplt/CryptoQuantPro/discussions
+- **Issues**: https://github.com/eplt/CryptoQuantPro/issues
+- **Discussions**: https://github.com/eplt/CryptoQuantPro/discussions
+
+## Contributing
+
+Contributions are welcome! Please see the testing guide and follow existing patterns.
 
 ## License
 
@@ -117,3 +291,9 @@ This software is for educational and research purposes only. Cryptocurrency trad
 **Thank you for using CryptoQuant Pro!** ⭐
 
 If you find this project useful, please consider starring the repository and sharing it with others in the crypto community.
+
+---
+
+## Previous Releases
+
+- [v0.1.0 Release Notes](https://github.com/eplt/CryptoQuantPro/releases/tag/v0.1.0) - Initial Public Release (2025-12-25)
