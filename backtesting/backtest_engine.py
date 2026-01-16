@@ -8,7 +8,7 @@ def build_backtest_windows(mode, start_date, end_date, window_days=None, step_da
     """Build backtest windows based on mode."""
     normalized_mode = (mode or 'single').lower()
     
-    if normalized_mode == 'single' or not window_days or window_days <= 0:
+    if normalized_mode == 'single' or window_days is None or window_days <= 0:
         return [{
             'label': 'full',
             'start_date': start_date,

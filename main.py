@@ -580,7 +580,13 @@ def main():
     except ValueError as e:
         print(f"Invalid backtest window mode '{BACKTEST_WINDOW_MODE}': {e}. Using single window.")
         backtest_window_mode = 'single'
-        backtest_windows = build_backtest_windows('single', BACKTEST_START, BACKTEST_END)
+        backtest_windows = build_backtest_windows(
+            'single',
+            BACKTEST_START,
+            BACKTEST_END,
+            BACKTEST_WINDOW_DAYS,
+            BACKTEST_WINDOW_STEP_DAYS
+        )
     
     if backtest_window_mode == 'single':
         primary_window = backtest_windows[0]
