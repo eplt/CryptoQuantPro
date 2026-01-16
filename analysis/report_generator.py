@@ -357,8 +357,10 @@ class ReportGenerator:
             story.append(img)
             story.append(Spacer(1, 12))
             
+            token_scores = self.analysis_data['token_scores']
+
             # Create top tokens table
-            top_tokens = list(self.analysis_data['token_scores'].items())[:10]
+            top_tokens = list(token_scores.items())[:10]
             
             table_data = [['Rank', 'Token', 'Score', 'Volatility', 'Market Cap', 'Liquidity Ratio']]
             
@@ -387,6 +389,61 @@ class ReportGenerator:
             
             story.append(table)
             story.append(Spacer(1, 12))
+
+            if 'rebalancing_token_suggestions' in self.analysis_data:
+                ranked_suggestions = []
+
+                for suggestion in self.analysis_data['rebalancing_token_suggestions']:
+                    tokens = suggestion.get('tokens', [])
+                    raw_scores = [
+                        token_scores.get(token, {}).get('final_score')
+                        for token in tokens
+                    ]
+                    scores = [score for score in raw_scores if score is not None]
+                    avg_score = sum(scores) / len(scores) if len(scores) > 0 else None
+                    ranked_suggestions.append({
+                        'label': suggestion.get('label', 'Suggestion'),
+                        'tokens': tokens,
+                        'avg_score': avg_score
+                    })
+
+                ranked_suggestions.sort(
+                    key=lambda item: item['avg_score'] if item['avg_score'] is not None else float('-inf'),
+                    reverse=True
+                )
+
+                story.append(Paragraph("Final Top Token Suggestions", subheading_style))
+                story.append(Paragraph("Ranked by average composite score.", styles['Normal']))
+
+                suggestion_data = [['Rank', 'Suggestion', 'Tokens', 'Avg Score']]
+                for i, suggestion in enumerate(ranked_suggestions, start=1):
+                    avg_score_display = (
+                        f"{suggestion['avg_score']:.1f}"
+                        if suggestion['avg_score'] is not None
+                        else "N/A"
+                    )
+                    suggestion_data.append([
+                        str(i),
+                        suggestion['label'],
+                        ', '.join(suggestion['tokens']),
+                        avg_score_display
+                    ])
+
+                suggestion_table = Table(suggestion_data)
+                suggestion_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+
+                story.append(suggestion_table)
+                story.append(Spacer(1, 12))
             
             # AI analysis of token selection
             if self.ollama_available:
