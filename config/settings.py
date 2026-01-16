@@ -14,9 +14,23 @@ def _read_positive_int(value, default):
 BINANCE_API_KEY = os.getenv('BINANCE_API_KEY')
 BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY')
 
+# Backtest Horizons
+BACKTEST_HORIZON = os.getenv('BACKTEST_HORIZON', 'medium').lower()
+BACKTEST_HORIZON_PRESETS = {
+    'medium': {'label': '6-12 months', 'window_days': 365, 'lookback_days': 730},
+    'long': {'label': '2-3 years', 'window_days': 1095, 'lookback_days': 1095}
+}
+BACKTEST_HORIZON_SETTINGS = BACKTEST_HORIZON_PRESETS.get(
+    BACKTEST_HORIZON,
+    BACKTEST_HORIZON_PRESETS['medium']
+)
+
 # Data Collection
 DATA_DIR = 'data'
-LOOKBACK_DAYS = 730  # 2 years of data
+LOOKBACK_DAYS = _read_positive_int(
+    os.getenv('LOOKBACK_DAYS'),
+    BACKTEST_HORIZON_SETTINGS['lookback_days']
+)
 INTERVAL = '1d'      # Daily data
 
 # Token Evaluation Criteria
@@ -47,5 +61,12 @@ INITIAL_CAPITAL = 10000     # $10k starting capital
 BACKTEST_WINDOW_MODE = os.getenv('BACKTEST_WINDOW_MODE', 'single').lower()
 if BACKTEST_WINDOW_MODE not in {'single', 'rolling', 'expanding'}:
     BACKTEST_WINDOW_MODE = 'single'
-BACKTEST_WINDOW_DAYS = _read_positive_int(os.getenv('BACKTEST_WINDOW_DAYS'), 365)
-BACKTEST_WINDOW_STEP_DAYS = _read_positive_int(os.getenv('BACKTEST_WINDOW_STEP_DAYS'), 90)
+BACKTEST_WINDOW_DAYS = _read_positive_int(
+    os.getenv('BACKTEST_WINDOW_DAYS'),
+    BACKTEST_HORIZON_SETTINGS['window_days']
+)
+DEFAULT_BACKTEST_WINDOW_STEP_DAYS = 90 if BACKTEST_WINDOW_DAYS <= 365 else 180
+BACKTEST_WINDOW_STEP_DAYS = _read_positive_int(
+    os.getenv('BACKTEST_WINDOW_STEP_DAYS'),
+    DEFAULT_BACKTEST_WINDOW_STEP_DAYS
+)

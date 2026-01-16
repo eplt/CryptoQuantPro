@@ -83,6 +83,7 @@ BINANCE_SECRET_KEY = "your_secret_key"
 Adjust parameters in `config/settings.py` if needed; e.g.:
 
 ```
+BACKTEST_HORIZON = 'medium'        # 'medium' (6-12 months) or 'long' (2-3 years)
 LOOKBACK_DAYS = 730               # Historical data length (days)
 INTERVAL = '1d'                   # Price data interval
 PORTFOLIO_CONFIG = {

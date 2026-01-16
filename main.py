@@ -188,6 +188,61 @@ def collect_tokens_by_mode(collector, mode, manual_tokens):
         else:
             return manual_price_data, manual_market_data
 
+def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_size=4, lookback_days=90):
+    """Suggest token mixes for rebalancing backtests using simple heuristics."""
+    if not token_scores:
+        return []
+    
+    tokens_by_score = list(token_scores.keys())
+    target_size = max(2, min(target_size, len(tokens_by_score)))
+    candidate_pool_size = min(len(tokens_by_score), max(target_size * 3, target_size))
+    candidate_pool = tokens_by_score[:candidate_pool_size]
+    suggestions = []
+    seen = set()
+    
+    def add_suggestion(label, tokens):
+        tokens = list(dict.fromkeys(tokens))
+        if len(tokens) < 2:
+            return
+        token_key = tuple(tokens)
+        if token_key in seen:
+            return
+        suggestions.append({'label': label, 'tokens': tokens})
+        seen.add(token_key)
+    
+    add_suggestion("Top score mix", candidate_pool[:target_size])
+    
+    try:
+        returns_data = {}
+        for symbol in candidate_pool:
+            returns = np.log(price_data[symbol]['close'] / price_data[symbol]['close'].shift(1)).dropna()
+            returns_data[symbol] = returns.tail(lookback_days)
+        
+        corr_matrix = pd.DataFrame(returns_data).corr().fillna(1)
+        selected = [candidate_pool[0]]
+        remaining = [token for token in candidate_pool if token not in selected]
+        
+        while len(selected) < target_size and remaining:
+            next_token = min(
+                remaining,
+                key=lambda token: np.mean([abs(corr_matrix.loc[token, picked]) for picked in selected])
+            )
+            selected.append(next_token)
+            remaining.remove(next_token)
+        
+        add_suggestion("Low correlation mix", selected)
+    except Exception:
+        pass
+    
+    high_vol_tokens = sorted(
+        candidate_pool,
+        key=lambda token: token_scores[token]['metrics'].get('volatility', 0),
+        reverse=True
+    )
+    add_suggestion("High volatility mix", high_vol_tokens[:target_size])
+    
+    return suggestions[:max_sets]
+
 def prompt_for_report_generation():
     """Prompt user for report generation options"""
     print(f"\n" + "="*60)
@@ -418,6 +473,13 @@ def main():
     if selection_mode != 'auto':
         print("🎯 = Manually selected token")
     
+    suggestions = suggest_rebalancing_token_sets(token_scores, price_data)
+    if suggestions:
+        analysis_data['rebalancing_token_suggestions'] = suggestions
+        print("\nRebalancing backtest token suggestions:")
+        for suggestion in suggestions:
+            print(f"  {suggestion['label']}: {', '.join(suggestion['tokens'])}")
+    
     # Step 3: Portfolio Construction (Parallel)
     print(f"\n3. Building optimal portfolios with parallel processing...")
     portfolio_start = time.time()
@@ -560,6 +622,7 @@ def main():
     
     # Step 6: Backtesting with Multiple Configurations
     print(f"\n6. Running backtests with multiple configurations...")
+    print(f"Transaction fee applied: {TRANSACTION_FEE:.2%} per trade")
     backtest_start = time.time()
     
     backtest_results = {}

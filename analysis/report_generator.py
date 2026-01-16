@@ -9,6 +9,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from config.settings import TRANSACTION_FEE
 import pandas as pd
 import numpy as np
 from analysis.performance_metrics import PerformanceAnalyzer
@@ -322,7 +323,7 @@ class ReportGenerator:
         
         <b>4. Rebalancing Strategy Testing:</b><br/>
         Six different drift thresholds (8%, 10%, 12%, 15%, 20%, 25%) were backtested with realistic 
-        transaction costs of 0.06% per trade. Minimum rebalancing interval of 5 days and maximum 
+        transaction costs of {TRANSACTION_FEE:.2%} per trade. Minimum rebalancing interval of 5 days and maximum 
         of 21 days were enforced to prevent over-trading.<br/><br/>
         
         <b>5. Risk Management:</b><br/>
