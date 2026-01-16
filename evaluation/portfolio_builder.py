@@ -19,8 +19,7 @@ class PortfolioBuilder:
             # User explicitly provided n_cores, honor it
             self.n_cores = n_cores
         else:
-            # Use value from config (which reads from env var PORTFOLIO_N_JOBS or defaults to 8)
-            # Always use the configured value, which is already capped
+            # Use value from config (defaults to 8, or PORTFOLIO_N_JOBS env var if set)
             self.n_cores = PORTFOLIO_N_JOBS
         
         # Get backend from config
