@@ -99,6 +99,50 @@ REBALANCING_CONFIG = {
 }
 ```
 
+#### Parallel Processing Configuration
+
+**Important for Apple Silicon (M1/M2/M3) and multi-core systems:**
+
+By default, portfolio optimization uses **8 CPU cores** to prevent memory issues and crashes on macOS. You can customize this behavior using environment variables:
+
+```bash
+# Recommended: Use 8-12 cores for optimal stability on Apple Silicon
+export PORTFOLIO_N_JOBS=8
+
+# Optional: Choose backend (loky or threading)
+export PORTFOLIO_BACKEND=loky
+
+# Then run the application
+python main.py
+```
+
+**Recommended Settings:**
+
+| System | Cores | Recommended `PORTFOLIO_N_JOBS` |
+|--------|-------|-------------------------------|
+| M1/M2/M3 Pro (10-12 cores) | 10-12 | 8 |
+| M1/M2/M3 Max (12-14 cores) | 12-14 | 8-10 |
+| M1/M2 Ultra (20+ cores) | 20+ | 8-12 |
+| Intel/AMD (8-16 cores) | 8-16 | 8-12 |
+| Intel/AMD (16+ cores) | 16+ | 12-16 |
+
+**Why Cap Parallel Jobs?**
+
+Using all available CPU cores can cause:
+- Excessive memory usage from multiple worker processes
+- Nested parallelism conflicts (BLAS/OpenMP libraries spawning additional threads)
+- System instability and `SIGKILL(-9)` terminations on macOS
+
+The application automatically sets `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`, and `VECLIB_MAXIMUM_THREADS=1` to prevent nested parallelism.
+
+**Troubleshooting:**
+
+If you experience crashes or high memory usage:
+1. Reduce `PORTFOLIO_N_JOBS` to 4-6
+2. Try `PORTFOLIO_BACKEND=threading` instead of `loky`
+3. Monitor memory usage with Activity Monitor (macOS) or `htop` (Linux)
+4. Check system logs for OOM (out of memory) events
+
 ---
 
 ## Usage

@@ -1,3 +1,8 @@
+from config.parallel_config import configure_blas_threads
+
+# Configure BLAS/OMP thread limits early to avoid nested parallelism issues
+configure_blas_threads(num_threads=1)
+
 from data.data_collector import DataCollector
 from evaluation.token_evaluator import TokenEvaluator
 from evaluation.portfolio_builder import PortfolioBuilder
