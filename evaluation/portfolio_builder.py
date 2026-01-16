@@ -19,12 +19,9 @@ class PortfolioBuilder:
             # User explicitly provided n_cores, honor it
             self.n_cores = n_cores
         else:
-            # Use configuration (which reads from env var or defaults to 8)
-            self.n_cores = get_safe_n_jobs(
-                requested_n_jobs=PORTFOLIO_N_JOBS if PORTFOLIO_N_JOBS != 8 else None,
-                max_default=8,
-                cpu_count=os.cpu_count()
-            )
+            # Use value from config (which reads from env var PORTFOLIO_N_JOBS or defaults to 8)
+            # Always use the configured value, which is already capped
+            self.n_cores = PORTFOLIO_N_JOBS
         
         # Get backend from config
         self.backend = PORTFOLIO_BACKEND
