@@ -582,7 +582,10 @@ def main():
         backtest_window_mode = 'single'
         backtest_windows = build_backtest_windows('single', BACKTEST_START, BACKTEST_END)
     
-    primary_window = backtest_windows[-1]
+    if backtest_window_mode == 'single':
+        primary_window = backtest_windows[0]
+    else:
+        primary_window = backtest_windows[-1]
     primary_window_label = primary_window['label']
     
     analysis_data['backtest_window_mode'] = backtest_window_mode
@@ -623,10 +626,6 @@ def main():
                 print(" ✗ (no successful windows)")
                 continue
             
-            backtest_results[drift] = batch_results.get(
-                primary_window_label,
-                next(iter(batch_results.values()))
-            )
             backtest_batch_results[drift] = {
                 label: results['performance_metrics']
                 for label, results in batch_results.items()
@@ -635,6 +634,12 @@ def main():
             if batch_errors:
                 backtest_window_errors[drift] = batch_errors
             
+            primary_results = batch_results.get(primary_window_label)
+            if primary_results is None:
+                print(" ✗ (primary window unavailable)")
+                continue
+            
+            backtest_results[drift] = primary_results
             successful_backtests += 1
             window_summary = ""
             if len(backtest_windows) > 1:

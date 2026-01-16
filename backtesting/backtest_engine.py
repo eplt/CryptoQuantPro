@@ -23,7 +23,7 @@ def build_backtest_windows(mode, start_date, end_date, window_days=None, step_da
         while window_start + timedelta(days=window_days) <= end_date:
             window_end = window_start + timedelta(days=window_days)
             windows.append({
-                'label': f"{window_start:%Y%m%d}-{window_end:%Y%m%d}",
+                'label': format_backtest_window_label(window_start, window_end),
                 'start_date': window_start,
                 'end_date': window_end
             })
@@ -32,7 +32,7 @@ def build_backtest_windows(mode, start_date, end_date, window_days=None, step_da
         window_end = start_date + timedelta(days=window_days)
         while window_end <= end_date:
             windows.append({
-                'label': f"{start_date:%Y%m%d}-{window_end:%Y%m%d}",
+                'label': format_backtest_window_label(start_date, window_end),
                 'start_date': start_date,
                 'end_date': window_end
             })
@@ -48,6 +48,10 @@ def build_backtest_windows(mode, start_date, end_date, window_days=None, step_da
         }]
     
     return windows
+
+def format_backtest_window_label(start_date, end_date):
+    """Format a window label for backtests."""
+    return f"{start_date:%Y%m%d}-{end_date:%Y%m%d}"
 
 class BacktestEngine:
     def __init__(self, price_data, portfolio_config):
@@ -134,7 +138,10 @@ class BacktestEngine:
         batch_errors = {}
         
         for window in windows:
-            label = window.get('label') or f"{window['start_date']:%Y%m%d}-{window['end_date']:%Y%m%d}"
+            label = window.get('label') or format_backtest_window_label(
+                window['start_date'],
+                window['end_date']
+            )
             
             try:
                 batch_results[label] = self.run_backtest(
