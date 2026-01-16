@@ -35,3 +35,10 @@ ALLOCATION_METHODS = ['equal_weight', 'market_cap', 'risk_parity', 'volatility_w
 BACKTEST_START = datetime.now() - timedelta(days=LOOKBACK_DAYS)
 BACKTEST_END = datetime.now() - timedelta(days=30)  # Leave recent data for live testing
 INITIAL_CAPITAL = 10000     # $10k starting capital
+
+# Parallel Processing Configuration
+# Safe default for parallel processing - prevents excessive memory usage and SIGKILL on macOS
+# Can be overridden via PORTFOLIO_N_JOBS environment variable
+PORTFOLIO_N_JOBS = int(os.getenv('PORTFOLIO_N_JOBS', '8'))  # Conservative default: 8 cores
+PORTFOLIO_BACKEND = os.getenv('PORTFOLIO_BACKEND', 'loky')  # joblib backend: 'loky' or 'threading'
+MAX_N_JOBS_WARNING_THRESHOLD = 16  # Warn if n_jobs exceeds this value

@@ -7,13 +7,33 @@ import os
 from functools import partial
 import multiprocessing as mp
 from config.settings import *
+from config.parallel_config import get_safe_n_jobs, warn_if_high_n_jobs
 
 class PortfolioBuilder:
     def __init__(self, token_scores, price_data, n_cores=None):
         self.token_scores = token_scores
         self.price_data = price_data
-        self.n_cores = n_cores or os.cpu_count()
-        print(f"Portfolio Builder using {self.n_cores} cores for parallel processing")
+        
+        # Get safe n_jobs value from explicit parameter, env var, config, or safe default
+        if n_cores is not None:
+            # User explicitly provided n_cores, honor it
+            self.n_cores = n_cores
+        else:
+            # Use configuration (which reads from env var or defaults to 8)
+            self.n_cores = get_safe_n_jobs(
+                requested_n_jobs=PORTFOLIO_N_JOBS if PORTFOLIO_N_JOBS != 8 else None,
+                max_default=8,
+                cpu_count=os.cpu_count()
+            )
+        
+        # Get backend from config
+        self.backend = PORTFOLIO_BACKEND
+        
+        # Warn if using high n_jobs
+        warn_if_high_n_jobs(self.n_cores, threshold=MAX_N_JOBS_WARNING_THRESHOLD)
+        
+        print(f"Portfolio Builder using {self.n_cores} cores for parallel processing (backend: {self.backend})")
+        print(f"Note: To change, set PORTFOLIO_N_JOBS env var or pass n_cores parameter")
         
     def calculate_correlation_matrix(self, symbols, lookback_days=90):
         """Calculate correlation matrix for given symbols"""
@@ -35,7 +55,7 @@ class PortfolioBuilder:
         sizes_to_test = list(range(min_tokens, min(max_size + 1, len(candidate_tokens) + 1)))
         
         # Parallel execution for different portfolio sizes
-        portfolio_results = Parallel(n_jobs=self.n_cores, verbose=1)(
+        portfolio_results = Parallel(n_jobs=self.n_cores, backend=self.backend, verbose=1)(
             delayed(self._evaluate_portfolio_size)(candidate_tokens, size)
             for size in sizes_to_test
         )
@@ -76,7 +96,7 @@ class PortfolioBuilder:
         print(f"Testing {len(all_combinations)} combinations for portfolio size {portfolio_size}")
         
         # Parallel evaluation of combinations
-        combination_scores = Parallel(n_jobs=self.n_cores, verbose=0)(
+        combination_scores = Parallel(n_jobs=self.n_cores, backend=self.backend, verbose=0)(
             delayed(self._evaluate_single_combination)(combo)
             for combo in all_combinations
         )
@@ -198,7 +218,7 @@ class PortfolioBuilder:
         print(f"Testing {len(allocation_methods)} allocation methods in parallel...")
         
         # Parallel execution for different allocation methods
-        method_results = Parallel(n_jobs=min(self.n_cores, len(allocation_methods)), verbose=1)(
+        method_results = Parallel(n_jobs=min(self.n_cores, len(allocation_methods)), backend=self.backend, verbose=1)(
             delayed(self._test_allocation_method)(tokens, method)
             for method in allocation_methods
         )
@@ -297,7 +317,7 @@ class PortfolioBuilder:
             simulation_batches[i] += 1
         
         # Parallel Monte Carlo
-        mc_results = Parallel(n_jobs=self.n_cores, verbose=1)(
+        mc_results = Parallel(n_jobs=self.n_cores, backend=self.backend, verbose=1)(
             delayed(self._monte_carlo_batch)(tokens, batch_size)
             for batch_size in simulation_batches
         )
@@ -366,7 +386,7 @@ class PortfolioBuilder:
         """Analyze correlations across multiple time windows in parallel"""
         print(f"Analyzing correlations across {len(time_windows)} time windows...")
         
-        correlation_results = Parallel(n_jobs=min(self.n_cores, len(time_windows)), verbose=1)(
+        correlation_results = Parallel(n_jobs=min(self.n_cores, len(time_windows)), backend=self.backend, verbose=1)(
             delayed(self._analyze_correlation_window)(tokens, window)
             for window in time_windows
         )
@@ -412,7 +432,7 @@ class PortfolioBuilder:
         
         print(f"Stress testing {len(portfolio_candidates)} portfolios...")
         
-        stress_results = Parallel(n_jobs=self.n_cores, verbose=1)(
+        stress_results = Parallel(n_jobs=self.n_cores, backend=self.backend, verbose=1)(
             delayed(self._stress_test_single_portfolio)(portfolio, stress_scenarios)
             for portfolio in portfolio_candidates
         )
