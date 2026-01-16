@@ -15,7 +15,10 @@ def build_backtest_windows(mode, start_date, end_date, window_days=None, step_da
             'end_date': end_date
         }]
     
-    step_days = step_days or window_days
+    if step_days is None:
+        step_days = window_days
+    if step_days <= 0:
+        raise ValueError("Backtest window step_days must be positive.")
     windows = []
     
     if normalized_mode == 'rolling':

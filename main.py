@@ -581,7 +581,7 @@ def main():
         print(f"Invalid backtest window mode '{BACKTEST_WINDOW_MODE}': {e}. Using single window.")
         backtest_window_mode = 'single'
         backtest_windows = build_backtest_windows(
-            'single',
+            backtest_window_mode,
             BACKTEST_START,
             BACKTEST_END,
             BACKTEST_WINDOW_DAYS,

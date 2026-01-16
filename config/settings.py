@@ -1,6 +1,14 @@
 import os
 from datetime import datetime, timedelta
 
+def _read_positive_int(value, default):
+    try:
+        parsed = int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+    
+    return parsed if parsed > 0 else default
+
 # API Configuration
 BINANCE_API_KEY = os.getenv('BINANCE_API_KEY')
 BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY')
@@ -36,5 +44,7 @@ BACKTEST_START = datetime.now() - timedelta(days=LOOKBACK_DAYS)
 BACKTEST_END = datetime.now() - timedelta(days=30)  # Leave recent data for live testing
 INITIAL_CAPITAL = 10000     # $10k starting capital
 BACKTEST_WINDOW_MODE = os.getenv('BACKTEST_WINDOW_MODE', 'single').lower()
-BACKTEST_WINDOW_DAYS = int(os.getenv('BACKTEST_WINDOW_DAYS', 365))
-BACKTEST_WINDOW_STEP_DAYS = int(os.getenv('BACKTEST_WINDOW_STEP_DAYS', 90))
+if BACKTEST_WINDOW_MODE not in {'single', 'rolling', 'expanding'}:
+    BACKTEST_WINDOW_MODE = 'single'
+BACKTEST_WINDOW_DAYS = _read_positive_int(os.getenv('BACKTEST_WINDOW_DAYS'), 365)
+BACKTEST_WINDOW_STEP_DAYS = _read_positive_int(os.getenv('BACKTEST_WINDOW_STEP_DAYS'), 90)
