@@ -2,12 +2,13 @@ import os
 from datetime import datetime, timedelta
 
 def _read_positive_int(value, default):
+    safe_default = default if default > 0 else 1
     try:
-        parsed = int(value) if value is not None else default
+        parsed = int(value)
     except (TypeError, ValueError):
-        return default
+        return safe_default
     
-    return parsed if parsed > 0 else default
+    return parsed if parsed > 0 else safe_default
 
 # API Configuration
 BINANCE_API_KEY = os.getenv('BINANCE_API_KEY')
