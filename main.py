@@ -223,27 +223,26 @@ def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_
     
     add_suggestion("Top score mix", candidate_pool[:target_size])
     
-    try:
-        returns_data = {}
-        for symbol in candidate_pool:
-            returns = np.log(price_data[symbol]['close'] / price_data[symbol]['close'].shift(1)).dropna()
-            returns_data[symbol] = returns.tail(lookback_days)
-        
-        corr_matrix = pd.DataFrame(returns_data).corr().fillna(1)
-        selected = [candidate_pool[0]]
-        remaining = [token for token in candidate_pool if token not in selected]
-        
-        while len(selected) < target_size and remaining:
-            next_token = min(
-                remaining,
-                key=lambda token: np.mean([abs(corr_matrix.loc[token, picked]) for picked in selected])
-            )
-            selected.append(next_token)
-            remaining.remove(next_token)
-        
-        add_suggestion("Low correlation mix", selected)
-    except Exception as e:
-        print(f"Skipping correlation-based suggestions: {e}")
+    if len(candidate_pool) >= 2:
+        try:
+            returns_data = {}
+            for symbol in candidate_pool:
+                returns = np.log(price_data[symbol]['close'] / price_data[symbol]['close'].shift(1)).dropna()
+                returns_data[symbol] = returns.tail(lookback_days)
+            
+            corr_matrix = pd.DataFrame(returns_data).corr().abs().fillna(1)
+            selected = [candidate_pool[0]]
+            remaining = [token for token in candidate_pool if token not in selected]
+            
+            while len(selected) < target_size and remaining:
+                avg_corr = corr_matrix.loc[remaining, selected].mean(axis=1)
+                next_token = avg_corr.idxmin()
+                selected.append(next_token)
+                remaining.remove(next_token)
+            
+            add_suggestion("Low correlation mix", selected)
+        except Exception as e:
+            print(f"Skipping correlation-based suggestions: {e}")
     
     high_vol_tokens = sorted(
         candidate_pool,

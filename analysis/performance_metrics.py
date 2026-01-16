@@ -12,10 +12,12 @@ class PerformanceAnalyzer:
         """Generate comprehensive performance report"""
         metrics = self.results['performance_metrics']
         portfolio_values = self.results.get('portfolio_values', [])
-        start_date = portfolio_values[0]['date'] if portfolio_values else None
-        end_date = portfolio_values[-1]['date'] if portfolio_values else None
+        first_entry = portfolio_values[0] if portfolio_values else {}
+        last_entry = portfolio_values[-1] if portfolio_values else {}
+        start_date = first_entry.get('date')
+        end_date = last_entry.get('date')
         total_days = (end_date - start_date).days if start_date and end_date else 0
-        initial_capital = portfolio_values[0]['total_value'] if portfolio_values else 0
+        initial_capital = first_entry.get('total_value', 0)
         start_label = start_date.strftime('%Y-%m-%d') if start_date else "N/A"
         end_label = end_date.strftime('%Y-%m-%d') if end_date else "N/A"
         
