@@ -65,6 +65,7 @@ def get_safe_n_jobs(requested_n_jobs=None, max_default=8, cpu_count=None):
         int: Safe number of jobs to use
     """
     if cpu_count is None:
+        # os.cpu_count() returns None on systems where CPU count cannot be determined
         cpu_count = os.cpu_count() or 1
     
     if requested_n_jobs is not None:
