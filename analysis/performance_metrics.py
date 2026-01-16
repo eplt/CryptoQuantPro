@@ -176,7 +176,7 @@ EFFICIENCY:
         returns = portfolio_df['total_value'].pct_change().dropna()
         
         max_drawdown = abs(self.results['performance_metrics']['max_drawdown'])
-        calmar_ratio = (self.results['performance_metrics']['annualized_return'] / max_drawdown) if max_drawdown else 0
+        calmar_ratio = (self.results['performance_metrics']['annualized_return'] / max_drawdown) if max_drawdown > 0 else 0
         
         risk_metrics = {
             'value_at_risk_5pct': returns.quantile(0.05),

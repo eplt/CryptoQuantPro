@@ -229,7 +229,9 @@ def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_
             for symbol in candidate_pool:
                 prices = price_data[symbol]['close']
                 prices = prices[prices > 0]
-                returns = np.log(prices / prices.shift(1)).dropna()
+                shifted = prices.shift(1)
+                valid = shifted > 0
+                returns = np.log(prices[valid] / shifted[valid]).dropna()
                 if returns.empty:
                     continue
                 returns_data[symbol] = returns.tail(lookback_days)
