@@ -175,6 +175,9 @@ EFFICIENCY:
         portfolio_df.set_index('date', inplace=True)
         returns = portfolio_df['total_value'].pct_change().dropna()
         
+        max_drawdown = abs(self.results['performance_metrics']['max_drawdown'])
+        calmar_ratio = (self.results['performance_metrics']['annualized_return'] / max_drawdown) if max_drawdown else 0
+        
         risk_metrics = {
             'value_at_risk_5pct': returns.quantile(0.05),
             'conditional_var_5pct': returns[returns <= returns.quantile(0.05)].mean(),
@@ -182,7 +185,7 @@ EFFICIENCY:
             'kurtosis': returns.kurtosis(),
             'positive_periods': (returns > 0).sum() / len(returns),
             'max_consecutive_losses': self._calculate_max_consecutive_losses(returns),
-            'calmar_ratio': self.results['performance_metrics']['annualized_return'] / abs(self.results['performance_metrics']['max_drawdown']),
+            'calmar_ratio': calmar_ratio,
         }
         
         return risk_metrics

@@ -227,12 +227,20 @@ def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_
         try:
             returns_data = {}
             for symbol in candidate_pool:
-                returns = np.log(price_data[symbol]['close'] / price_data[symbol]['close'].shift(1)).dropna()
+                prices = price_data[symbol]['close']
+                prices = prices[prices > 0]
+                returns = np.log(prices / prices.shift(1)).dropna()
+                if returns.empty:
+                    continue
                 returns_data[symbol] = returns.tail(lookback_days)
             
-            corr_matrix = pd.DataFrame(returns_data).corr().abs().fillna(1)
-            selected = [candidate_pool[0]]
-            remaining = [token for token in candidate_pool if token not in selected]
+            if len(returns_data) < 2:
+                raise ValueError("Not enough valid price data for correlation analysis.")
+            
+            corr_matrix = pd.DataFrame(returns_data).corr().abs().fillna(0)
+            valid_tokens = list(returns_data.keys())
+            selected = [valid_tokens[0]]
+            remaining = [token for token in valid_tokens if token not in selected]
             
             while len(selected) < target_size and remaining:
                 avg_corr = corr_matrix.loc[remaining, selected].mean(axis=1)
@@ -241,7 +249,7 @@ def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_
                 remaining.remove(next_token)
             
             add_suggestion("Low correlation mix", selected)
-        except Exception as e:
+        except (KeyError, ValueError, ZeroDivisionError, TypeError, pd.errors.EmptyDataError) as e:
             print(f"Skipping correlation-based suggestions: {e}")
     
     high_vol_tokens = sorted(
