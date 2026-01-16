@@ -1,7 +1,7 @@
 from data.data_collector import DataCollector
 from evaluation.token_evaluator import TokenEvaluator
 from evaluation.portfolio_builder import PortfolioBuilder
-from backtesting.backtest_engine import BacktestEngine
+from backtesting.backtest_engine import BacktestEngine, build_backtest_windows
 from analysis.performance_metrics import PerformanceAnalyzer
 from config.settings import *
 from __version__ import __version__, __release__
@@ -187,6 +187,81 @@ def collect_tokens_by_mode(collector, mode, manual_tokens):
             return combined_price_data, combined_market_data
         else:
             return manual_price_data, manual_market_data
+
+def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_size=4, lookback_days=90):
+    """Suggest token mixes for rebalancing backtests using scoring, correlation, and volatility.
+    
+    Args:
+        token_scores: Ordered token score mapping from evaluation.
+        price_data: Dict of price history DataFrames keyed by token.
+        max_sets: Maximum number of token sets to return.
+        target_size: Desired number of tokens per suggestion.
+        lookback_days: Lookback window for correlation analysis.
+    
+    Returns:
+        List of dicts with 'label' and 'tokens' keys.
+    """
+    if not token_scores:
+        return []
+    
+    tokens_by_score = list(token_scores.keys())
+    target_size = max(2, min(target_size, len(tokens_by_score)))
+    candidate_pool_size = min(len(tokens_by_score), max(target_size * 3, target_size))
+    candidate_pool = tokens_by_score[:candidate_pool_size]
+    suggestions = []
+    seen = set()
+    
+    def add_suggestion(label, tokens):
+        tokens = list(dict.fromkeys(tokens))
+        if len(tokens) < 2:
+            return
+        token_key = tuple(tokens)
+        if token_key in seen:
+            return
+        suggestions.append({'label': label, 'tokens': tokens})
+        seen.add(token_key)
+    
+    add_suggestion("Top score mix", candidate_pool[:target_size])
+    
+    if len(candidate_pool) >= 2:
+        try:
+            returns_data = {}
+            for symbol in candidate_pool:
+                prices = price_data[symbol]['close']
+                prices = prices[prices > 0]
+                shifted = prices.shift(1)
+                valid = shifted > 0
+                returns = np.log(prices[valid] / shifted[valid]).dropna()
+                if returns.empty:
+                    continue
+                returns_data[symbol] = returns.tail(lookback_days)
+            
+            if len(returns_data) < 2:
+                raise ValueError("Not enough valid price data for correlation analysis.")
+            
+            corr_matrix = pd.DataFrame(returns_data).corr().abs().fillna(0)
+            valid_tokens = list(returns_data.keys())
+            selected = [valid_tokens[0]]
+            remaining = [token for token in valid_tokens if token not in selected]
+            
+            while len(selected) < target_size and remaining:
+                avg_corr = corr_matrix.loc[remaining, selected].mean(axis=1)
+                next_token = avg_corr.idxmin()
+                selected.append(next_token)
+                remaining.remove(next_token)
+            
+            add_suggestion("Low correlation mix", selected)
+        except (KeyError, ValueError, ZeroDivisionError, TypeError, pd.errors.EmptyDataError) as e:
+            print(f"Skipping correlation-based suggestions: {e}")
+    
+    high_vol_tokens = sorted(
+        candidate_pool,
+        key=lambda token: token_scores[token]['metrics'].get('volatility', 0),
+        reverse=True
+    )
+    add_suggestion("High volatility mix", high_vol_tokens[:target_size])
+    
+    return suggestions[:max_sets]
 
 def prompt_for_report_generation():
     """Prompt user for report generation options"""
@@ -418,6 +493,13 @@ def main():
     if selection_mode != 'auto':
         print("🎯 = Manually selected token")
     
+    suggestions = suggest_rebalancing_token_sets(token_scores, price_data)
+    if suggestions:
+        analysis_data['rebalancing_token_suggestions'] = suggestions
+        print("\nRebalancing backtest token suggestions:")
+        for suggestion in suggestions:
+            print(f"  {suggestion['label']}: {', '.join(suggestion['tokens'])}")
+    
     # Step 3: Portfolio Construction (Parallel)
     print(f"\n3. Building optimal portfolios with parallel processing...")
     portfolio_start = time.time()
@@ -560,12 +642,58 @@ def main():
     
     # Step 6: Backtesting with Multiple Configurations
     print(f"\n6. Running backtests with multiple configurations...")
+    print(f"Transaction fee applied: {TRANSACTION_FEE:.2%} per trade")
     backtest_start = time.time()
     
     backtest_results = {}
-    drift_thresholds = [0.08, 0.10, 0.12, 0.15, 0.20, 0.25]
+    backtest_batch_results = {}
+    backtest_window_errors = {}
+    drift_thresholds = DRIFT_THRESHOLDS
     
-    print(f"Testing {len(drift_thresholds)} drift thresholds:")
+    backtest_window_mode = BACKTEST_WINDOW_MODE
+    
+    try:
+        backtest_windows = build_backtest_windows(
+            backtest_window_mode,
+            BACKTEST_START,
+            BACKTEST_END,
+            BACKTEST_WINDOW_DAYS,
+            BACKTEST_WINDOW_STEP_DAYS
+        )
+    except ValueError as e:
+        print(f"Invalid backtest window mode '{BACKTEST_WINDOW_MODE}': {e}. Using single window.")
+        backtest_window_mode = 'single'
+        try:
+            backtest_windows = build_backtest_windows(
+                backtest_window_mode,
+                BACKTEST_START,
+                BACKTEST_END,
+                BACKTEST_WINDOW_DAYS,
+                BACKTEST_WINDOW_STEP_DAYS
+            )
+        except ValueError as fallback_error:
+            print(f"Backtest window fallback failed: {fallback_error}. Using full window.")
+            backtest_windows = build_backtest_windows('single', BACKTEST_START, BACKTEST_END, None, None)
+    
+    if backtest_window_mode == 'single':
+        primary_window = backtest_windows[0]
+    else:
+        primary_window = backtest_windows[-1]
+    primary_window_label = primary_window['label']
+    
+    analysis_data['backtest_window_mode'] = backtest_window_mode
+    analysis_data['backtest_window_label'] = primary_window_label
+    analysis_data['backtest_window_range'] = {
+        'start': primary_window['start_date'].date().isoformat(),
+        'end': primary_window['end_date'].date().isoformat()
+    }
+    analysis_data['backtest_windows'] = [window['label'] for window in backtest_windows]
+    
+    window_label = "window" if len(backtest_windows) == 1 else "windows"
+    print(f"Testing {len(drift_thresholds)} drift thresholds across "
+          f"{len(backtest_windows)} {window_label} ({backtest_window_mode} mode):")
+    if len(backtest_windows) > 1:
+        print(f"Primary window for summary: {primary_window_label}")
     
     successful_backtests = 0
     
@@ -576,20 +704,40 @@ def main():
             'tokens': best_portfolio['tokens'],
             'allocations': best_allocations,
             'drift_threshold': drift,
-            'min_interval': 5,
-            'max_interval': 21
+            'min_interval': MIN_REBALANCE_INTERVAL,
+            'max_interval': MAX_REBALANCE_INTERVAL
         }
         
         try:
             engine = BacktestEngine(price_data, portfolio_config)
-            results = engine.run_backtest(
-                start_date=datetime.now() - timedelta(days=730),
-                end_date=datetime.now() - timedelta(days=30),
-                initial_capital=10000
+            batch_results, batch_errors = engine.run_backtest_batch(
+                backtest_windows,
+                initial_capital=INITIAL_CAPITAL
             )
-            backtest_results[drift] = results
+            
+            if not batch_results:
+                print(" ✗ (no successful windows)")
+                continue
+            
+            backtest_batch_results[drift] = {
+                label: results['performance_metrics']
+                for label, results in batch_results.items()
+            }
+            
+            if batch_errors:
+                backtest_window_errors[drift] = batch_errors
+            
+            primary_results = batch_results.get(primary_window_label)
+            if primary_results is None:
+                print(" ✗ (primary window unavailable)")
+                continue
+            
+            backtest_results[drift] = primary_results
             successful_backtests += 1
-            print(" ✓")
+            window_summary = ""
+            if len(backtest_windows) > 1:
+                window_summary = f" ({len(batch_results)}/{len(backtest_windows)} windows)"
+            print(f" ✓{window_summary}")
             
         except Exception as e:
             print(f" ✗ ({str(e)[:50]}...)")
@@ -602,10 +750,14 @@ def main():
     execution_log.append({
         'timestamp': datetime.now().isoformat(),
         'step': 'Backtesting',
-        'details': f'Completed {successful_backtests} backtests',
+        'details': (f'Completed {successful_backtests} backtests '
+                    f'({len(backtest_windows)} windows, mode: {backtest_window_mode})'),
         'duration_seconds': backtest_time
     })
     analysis_data['backtest_results'] = backtest_results
+    analysis_data['backtest_batch_results'] = backtest_batch_results
+    if backtest_window_errors:
+        analysis_data['backtest_window_errors'] = backtest_window_errors
     
     # Step 7: Performance Analysis
     print(f"\n7. Analyzing results...")
@@ -726,7 +878,10 @@ def main():
                     'execution_info': {
                         'timestamp': datetime.now().isoformat(),
                         'total_runtime_seconds': time.time() - start_time,
-                        'data_age_days': cache_status.get('newest_file', {}).get('age_days', 0)
+                        'data_age_days': cache_status.get('newest_file', {}).get('age_days', 0),
+                        'backtest_window_mode': analysis_data.get('backtest_window_mode'),
+                        'backtest_window_label': analysis_data.get('backtest_window_label'),
+                        'backtest_window_range': analysis_data.get('backtest_window_range')
                     }
                 }
             except Exception as e:

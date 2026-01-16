@@ -83,6 +83,7 @@ BINANCE_SECRET_KEY = "your_secret_key"
 Adjust parameters in `config/settings.py` if needed; e.g.:
 
 ```
+BACKTEST_HORIZON = 'medium'        # 'medium' (6-12 months) or 'long' (2-3 years)
 LOOKBACK_DAYS = 730               # Historical data length (days)
 INTERVAL = '1d'                   # Price data interval
 PORTFOLIO_CONFIG = {
@@ -97,6 +98,9 @@ REBALANCING_CONFIG = {
     'max_rebalance_interval': 21,
     'transaction_cost': 0.0006
 }
+BACKTEST_WINDOW_MODE = 'single'      # 'single', 'rolling', or 'expanding'
+BACKTEST_WINDOW_DAYS = 365           # Window size for rolling/expanding modes
+BACKTEST_WINDOW_STEP_DAYS = 90       # Step size between windows
 ```
 
 ---

@@ -4,6 +4,65 @@ from datetime import datetime, timedelta
 from backtesting.rebalancer import Rebalancer
 from config.settings import *
 
+def build_backtest_windows(mode, start_date, end_date, window_days=None, step_days=None):
+    """Build backtest windows based on mode."""
+    normalized_mode = (mode or 'single').lower()
+    
+    if window_days is None or window_days <= 0:
+        return [{
+            'label': 'full',
+            'start_date': start_date,
+            'end_date': end_date
+        }]
+    
+    if normalized_mode == 'single':
+        return [{
+            'label': 'full',
+            'start_date': start_date,
+            'end_date': end_date
+        }]
+    
+    if step_days is None:
+        step_days = window_days
+    if step_days <= 0:
+        raise ValueError("Backtest window step_days must be positive.")
+    windows = []
+    
+    if normalized_mode == 'rolling':
+        window_start = start_date
+        while window_start + timedelta(days=window_days) <= end_date:
+            window_end = window_start + timedelta(days=window_days)
+            windows.append({
+                'label': format_backtest_window_label(window_start, window_end),
+                'start_date': window_start,
+                'end_date': window_end
+            })
+            window_start += timedelta(days=step_days)
+    elif normalized_mode == 'expanding':
+        window_end = start_date + timedelta(days=window_days)
+        while window_end <= end_date:
+            windows.append({
+                'label': format_backtest_window_label(start_date, window_end),
+                'start_date': start_date,
+                'end_date': window_end
+            })
+            window_end += timedelta(days=step_days)
+    else:
+        raise ValueError(f"Unsupported backtest window mode: {mode}")
+    
+    if not windows:
+        return [{
+            'label': 'full',
+            'start_date': start_date,
+            'end_date': end_date
+        }]
+    
+    return windows
+
+def format_backtest_window_label(start_date, end_date):
+    """Format a window label for backtests."""
+    return f"{start_date:%Y%m%d}-{end_date:%Y%m%d}"
+
 class BacktestEngine:
     def __init__(self, price_data, portfolio_config):
         self.price_data = price_data
@@ -82,6 +141,28 @@ class BacktestEngine:
         results['performance_metrics'] = self.calculate_performance_metrics(results)
         
         return results
+
+    def run_backtest_batch(self, windows, initial_capital=INITIAL_CAPITAL):
+        """Run backtests across multiple windows."""
+        batch_results = {}
+        batch_errors = {}
+        
+        for window in windows:
+            label = window.get('label') or format_backtest_window_label(
+                window['start_date'],
+                window['end_date']
+            )
+            
+            try:
+                batch_results[label] = self.run_backtest(
+                    start_date=window['start_date'],
+                    end_date=window['end_date'],
+                    initial_capital=initial_capital
+                )
+            except Exception as e:
+                batch_errors[label] = str(e)
+        
+        return batch_results, batch_errors
     
     def prepare_portfolio_data(self, start_date, end_date):
         """Prepare aligned price data for all portfolio tokens"""

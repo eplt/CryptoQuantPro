@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List
+from config.settings import TRANSACTION_FEE
 
 class PerformanceAnalyzer:
     def __init__(self, backtest_results):
@@ -10,9 +11,59 @@ class PerformanceAnalyzer:
     def generate_performance_report(self):
         """Generate comprehensive performance report"""
         metrics = self.results['performance_metrics']
+        portfolio_values = self.results.get('portfolio_values', [])
+        first_entry = portfolio_values[0] if portfolio_values else {}
+        last_entry = portfolio_values[-1] if portfolio_values else {}
+        start_date = first_entry.get('date')
+        end_date = last_entry.get('date')
+        total_days = (end_date - start_date).days if start_date and end_date else 0
+        initial_capital = first_entry.get('total_value', 0)
+        start_label = start_date.strftime('%Y-%m-%d') if start_date else "N/A"
+        end_label = end_date.strftime('%Y-%m-%d') if end_date else "N/A"
+        
+        try:
+            risk_metrics = self.calculate_risk_metrics()
+        except Exception as e:
+            print(f"Could not calculate additional risk metrics for report: {e}")
+            risk_metrics = {}
+        
+        trade_analysis = self.generate_trade_analysis()
+        if 'total_trades' in trade_analysis:
+            trade_details = f"""
+TRADE DETAILS:
+- Average Trade Size: ${trade_analysis['avg_trade_size']:,.0f}
+- Largest Trade: ${trade_analysis['largest_trade']:,.0f}
+- Buy/Sell Ratio: {trade_analysis['buy_vs_sell_ratio']:.2f}
+- Avg Days Between Rebalances: {trade_analysis['avg_days_between_rebalances']:.1f}
+"""
+        else:
+            trade_details = f"""
+TRADE DETAILS:
+- {trade_analysis.get('message', 'No trades executed')}
+"""
+        
+        risk_details = ""
+        if risk_metrics:
+            risk_details = f"""
+ADDITIONAL RISK METRICS:
+- Value at Risk (5%): {risk_metrics['value_at_risk_5pct']:.3f}
+- Conditional VaR (5%): {risk_metrics['conditional_var_5pct']:.3f}
+- Skewness: {risk_metrics['skewness']:.3f}
+- Kurtosis: {risk_metrics['kurtosis']:.3f}
+- Positive Periods: {risk_metrics['positive_periods']:.1%}
+- Max Consecutive Losses: {risk_metrics['max_consecutive_losses']} periods
+- Calmar Ratio: {risk_metrics['calmar_ratio']:.3f}
+"""
         
         report = f"""
 === PORTFOLIO PERFORMANCE REPORT ===
+
+BACKTEST WINDOW:
+- Start Date: {start_label}
+- End Date: {end_label}
+- Total Days: {total_days}
+- Starting Capital: ${initial_capital:,.0f}
+- Fee Rate (per trade): {TRANSACTION_FEE:.3%}
 
 RETURNS:
 - Total Return: {metrics['total_return']:.2%}
@@ -34,6 +85,7 @@ TRADING METRICS:
 EFFICIENCY:
 - Return per Unit Risk: {metrics['annualized_return']/metrics['volatility']:.3f}
 - Return per Dollar of Fees: {metrics['total_return']/(metrics['fees_pct_of_portfolio']+0.001):.1f}
+{trade_details}{risk_details}
 """
         
         return report
@@ -123,6 +175,9 @@ EFFICIENCY:
         portfolio_df.set_index('date', inplace=True)
         returns = portfolio_df['total_value'].pct_change().dropna()
         
+        max_drawdown = abs(self.results['performance_metrics']['max_drawdown'])
+        calmar_ratio = (self.results['performance_metrics']['annualized_return'] / max_drawdown) if max_drawdown > 0 else 0
+        
         risk_metrics = {
             'value_at_risk_5pct': returns.quantile(0.05),
             'conditional_var_5pct': returns[returns <= returns.quantile(0.05)].mean(),
@@ -130,7 +185,7 @@ EFFICIENCY:
             'kurtosis': returns.kurtosis(),
             'positive_periods': (returns > 0).sum() / len(returns),
             'max_consecutive_losses': self._calculate_max_consecutive_losses(returns),
-            'calmar_ratio': self.results['performance_metrics']['annualized_return'] / abs(self.results['performance_metrics']['max_drawdown']),
+            'calmar_ratio': calmar_ratio,
         }
         
         return risk_metrics
