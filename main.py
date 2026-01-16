@@ -590,7 +590,7 @@ def main():
             )
         except ValueError as fallback_error:
             print(f"Backtest window fallback failed: {fallback_error}. Using full window.")
-            backtest_windows = build_backtest_windows('single', BACKTEST_START, BACKTEST_END)
+            backtest_windows = build_backtest_windows('single', BACKTEST_START, BACKTEST_END, None, None)
     
     if backtest_window_mode == 'single':
         primary_window = backtest_windows[0]
