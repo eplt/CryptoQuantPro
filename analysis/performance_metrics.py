@@ -21,7 +21,8 @@ class PerformanceAnalyzer:
         
         try:
             risk_metrics = self.calculate_risk_metrics()
-        except Exception:
+        except Exception as e:
+            print(f"Could not calculate additional risk metrics for report: {e}")
             risk_metrics = {}
         
         trade_analysis = self.generate_trade_analysis()

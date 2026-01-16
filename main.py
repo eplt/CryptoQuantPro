@@ -189,7 +189,18 @@ def collect_tokens_by_mode(collector, mode, manual_tokens):
             return manual_price_data, manual_market_data
 
 def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_size=4, lookback_days=90):
-    """Suggest token mixes for rebalancing backtests using simple heuristics."""
+    """Suggest token mixes for rebalancing backtests using scoring, correlation, and volatility.
+    
+    Args:
+        token_scores: Ordered token score mapping from evaluation.
+        price_data: Dict of price history DataFrames keyed by token.
+        max_sets: Maximum number of token sets to return.
+        target_size: Desired number of tokens per suggestion.
+        lookback_days: Lookback window for correlation analysis.
+    
+    Returns:
+        List of dicts with 'label' and 'tokens' keys.
+    """
     if not token_scores:
         return []
     
@@ -231,8 +242,8 @@ def suggest_rebalancing_token_sets(token_scores, price_data, max_sets=3, target_
             remaining.remove(next_token)
         
         add_suggestion("Low correlation mix", selected)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Skipping correlation-based suggestions: {e}")
     
     high_vol_tokens = sorted(
         candidate_pool,
