@@ -35,3 +35,6 @@ ALLOCATION_METHODS = ['equal_weight', 'market_cap', 'risk_parity', 'volatility_w
 BACKTEST_START = datetime.now() - timedelta(days=LOOKBACK_DAYS)
 BACKTEST_END = datetime.now() - timedelta(days=30)  # Leave recent data for live testing
 INITIAL_CAPITAL = 10000     # $10k starting capital
+BACKTEST_WINDOW_MODE = os.getenv('BACKTEST_WINDOW_MODE', 'single').lower()
+BACKTEST_WINDOW_DAYS = int(os.getenv('BACKTEST_WINDOW_DAYS', 365))
+BACKTEST_WINDOW_STEP_DAYS = int(os.getenv('BACKTEST_WINDOW_STEP_DAYS', 90))

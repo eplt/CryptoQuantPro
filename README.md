@@ -97,6 +97,9 @@ REBALANCING_CONFIG = {
     'max_rebalance_interval': 21,
     'transaction_cost': 0.0006
 }
+BACKTEST_WINDOW_MODE = 'single'      # 'single', 'rolling', or 'expanding'
+BACKTEST_WINDOW_DAYS = 365           # Window size for rolling/expanding modes
+BACKTEST_WINDOW_STEP_DAYS = 90       # Step size between windows
 ```
 
 ---

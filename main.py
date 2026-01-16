@@ -1,7 +1,7 @@
 from data.data_collector import DataCollector
 from evaluation.token_evaluator import TokenEvaluator
 from evaluation.portfolio_builder import PortfolioBuilder
-from backtesting.backtest_engine import BacktestEngine
+from backtesting.backtest_engine import BacktestEngine, build_backtest_windows
 from analysis.performance_metrics import PerformanceAnalyzer
 from config.settings import *
 from __version__ import __version__, __release__
@@ -563,9 +563,41 @@ def main():
     backtest_start = time.time()
     
     backtest_results = {}
-    drift_thresholds = [0.08, 0.10, 0.12, 0.15, 0.20, 0.25]
+    backtest_batch_results = {}
+    backtest_window_errors = {}
+    drift_thresholds = DRIFT_THRESHOLDS
     
-    print(f"Testing {len(drift_thresholds)} drift thresholds:")
+    backtest_window_mode = BACKTEST_WINDOW_MODE
+    
+    try:
+        backtest_windows = build_backtest_windows(
+            backtest_window_mode,
+            BACKTEST_START,
+            BACKTEST_END,
+            BACKTEST_WINDOW_DAYS,
+            BACKTEST_WINDOW_STEP_DAYS
+        )
+    except ValueError as e:
+        print(f"Invalid backtest window mode '{BACKTEST_WINDOW_MODE}': {e}. Using single window.")
+        backtest_window_mode = 'single'
+        backtest_windows = build_backtest_windows('single', BACKTEST_START, BACKTEST_END)
+    
+    primary_window = backtest_windows[-1]
+    primary_window_label = primary_window['label']
+    
+    analysis_data['backtest_window_mode'] = backtest_window_mode
+    analysis_data['backtest_window_label'] = primary_window_label
+    analysis_data['backtest_window_range'] = {
+        'start': primary_window['start_date'].date().isoformat(),
+        'end': primary_window['end_date'].date().isoformat()
+    }
+    analysis_data['backtest_windows'] = [window['label'] for window in backtest_windows]
+    
+    window_label = "window" if len(backtest_windows) == 1 else "windows"
+    print(f"Testing {len(drift_thresholds)} drift thresholds across "
+          f"{len(backtest_windows)} {window_label} ({backtest_window_mode} mode):")
+    if len(backtest_windows) > 1:
+        print(f"Primary window for summary: {primary_window_label}")
     
     successful_backtests = 0
     
@@ -576,20 +608,38 @@ def main():
             'tokens': best_portfolio['tokens'],
             'allocations': best_allocations,
             'drift_threshold': drift,
-            'min_interval': 5,
-            'max_interval': 21
+            'min_interval': MIN_REBALANCE_INTERVAL,
+            'max_interval': MAX_REBALANCE_INTERVAL
         }
         
         try:
             engine = BacktestEngine(price_data, portfolio_config)
-            results = engine.run_backtest(
-                start_date=datetime.now() - timedelta(days=730),
-                end_date=datetime.now() - timedelta(days=30),
-                initial_capital=10000
+            batch_results, batch_errors = engine.run_backtest_batch(
+                backtest_windows,
+                initial_capital=INITIAL_CAPITAL
             )
-            backtest_results[drift] = results
+            
+            if not batch_results:
+                print(" ✗ (no successful windows)")
+                continue
+            
+            backtest_results[drift] = batch_results.get(
+                primary_window_label,
+                next(iter(batch_results.values()))
+            )
+            backtest_batch_results[drift] = {
+                label: results['performance_metrics']
+                for label, results in batch_results.items()
+            }
+            
+            if batch_errors:
+                backtest_window_errors[drift] = batch_errors
+            
             successful_backtests += 1
-            print(" ✓")
+            window_summary = ""
+            if len(backtest_windows) > 1:
+                window_summary = f" ({len(batch_results)}/{len(backtest_windows)} windows)"
+            print(f" ✓{window_summary}")
             
         except Exception as e:
             print(f" ✗ ({str(e)[:50]}...)")
@@ -602,10 +652,14 @@ def main():
     execution_log.append({
         'timestamp': datetime.now().isoformat(),
         'step': 'Backtesting',
-        'details': f'Completed {successful_backtests} backtests',
+        'details': (f'Completed {successful_backtests} backtests '
+                    f'({len(backtest_windows)} windows, mode: {backtest_window_mode})'),
         'duration_seconds': backtest_time
     })
     analysis_data['backtest_results'] = backtest_results
+    analysis_data['backtest_batch_results'] = backtest_batch_results
+    if backtest_window_errors:
+        analysis_data['backtest_window_errors'] = backtest_window_errors
     
     # Step 7: Performance Analysis
     print(f"\n7. Analyzing results...")
@@ -726,7 +780,10 @@ def main():
                     'execution_info': {
                         'timestamp': datetime.now().isoformat(),
                         'total_runtime_seconds': time.time() - start_time,
-                        'data_age_days': cache_status.get('newest_file', {}).get('age_days', 0)
+                        'data_age_days': cache_status.get('newest_file', {}).get('age_days', 0),
+                        'backtest_window_mode': analysis_data.get('backtest_window_mode'),
+                        'backtest_window_label': analysis_data.get('backtest_window_label'),
+                        'backtest_window_range': analysis_data.get('backtest_window_range')
                     }
                 }
             except Exception as e:
